@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}YuciferPay — Managed Payout & Payroll Operations{% endblock %}</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #6366f1;
+      --accent-soft: rgba(99,102,241,0.15);
+      --border: rgba(255,255,255,0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Inter", sans-serif;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(99,102,241,0.15), transparent),
+        radial-gradient(800px 400px at 90% 10%, rgba(16,185,129,0.12), transparent),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      padding: 80px 24px;
+      height: 100%;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 120px;
+    }
+
+    .logo {
+      font-weight: 700;
+      font-size: 1.4rem;
+      letter-spacing: 0.4px;
+      text-decoration: none;
+      color: #c7d2fe;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: #c7d2fe;
+      border: 1px solid var(--border);
+      text-decoration: none;
+    }
+    .badge:hover { background: var(--accent); color: #fff; transform: translateY(-2px); }
+
+    section {
+      margin-top: 150px;
+    }
+
+    .section-title {
+      font-size: 1.9rem;
+      margin-bottom: 18px;
+    }
+
+    .section-desc {
+      color: var(--muted);
+      max-width: 780px;
+      margin-bottom: 56px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 26px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 32px;
+      backdrop-filter: blur(6px);
+    }
+
+    .card h3 {
+      font-size: 1.15rem;
+      margin-bottom: 14px;
+    }
+
+    .card p {
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .highlight {
+      margin-top: 60px;
+      padding: 44px;
+      border-radius: 28px;
+      border: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(0,0,0,0.25));
+    }
+
+    footer {
+      margin-top: 180px;
+      padding: 70px 24px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .notify-btn {
+    width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--accent-soft); color: var(--accent); font-size: 0.8rem; font-weight: 400;
+    display: flex; align-items: center; justify-content: center; text-decoration: none;
+    transition: all 0.2s ease;
+    }
+    .notify-btn:hover { background: var(--accent); color: #fff; transform: translateY(-2px); }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="flash-message {{ category }}">
+              {{ message }}
+              <span class="flash-close">&times;</span>
+            </div>
+          {% endfor %}
+        </div>
+
+        <style>
+          .flash-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          .flash-message {
+            padding: 12px 18px;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 500;
+            min-width: 250px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            opacity: 1;
+            transition: opacity 0.5s ease, transform 0.3s ease;
+            cursor: default;
+            position: relative;
+          }
+          .flash-message.success { background-color: #10b981; }  /* green */
+          .flash-message.error   { background-color: #ef4444; }  /* red */
+          .flash-message.warning { background-color: #f59e0b; }  /* yellow/orange */
+          .flash-message.info    { background-color: #3b82f6; }  /* blue */
+
+          .flash-close {
+            position: absolute;
+            top: 4px;
+            right: 8px;
+            cursor: pointer;
+            font-weight: bold;
+          }
+        </style>
+
+        <script>
+          const flashes = document.querySelectorAll('.flash-message');
+
+          flashes.forEach(flash => {
+            // Manual close
+            flash.querySelector('.flash-close').addEventListener('click', () => {
+              flash.style.opacity = '0';
+              setTimeout(() => flash.remove(), 500);
+            });
+
+            // Auto fade out after 5 seconds
+            setTimeout(() => {
+              flash.style.opacity = '0';
+              flash.style.transform = 'translateX(20px)';
+              setTimeout(() => flash.remove(), 500);
+            }, 8000);
+          });
+        </script>
+      {% endif %}
+    {% endwith %}
+
+
+    <header>
+      <a href="{{ url_for('index') }}" class="logo">YuciferPay</a>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      {% if current_user.is_authenticated %}
+        {% if current_user.notify.filter_by(seen=False).count() != 0 %}
+        <a href="{{ url_for('notify') }}" class="notify-btn" title="Notification">{{ current_user.notify.filter_by(seen=False).count() }}</a>
+        {% endif %}
+        <a href="{{ url_for('dashboard') }}" class="badge">Dashboard</a>
+        <a href="{{ url_for('logout') }}" class="badge">Logout</a>
+      {% else %}
+        <a href="https://wa.link/01orrx" class="badge">Get Registered</a>
+        <a href="{{ url_for('login') }}" class="badge">Login</a>
+      {% endif %}
+      </div>
+    </header>
+
+
+    {% block content %}{% endblock %}
+
+  </div>
+
+  <footer>
+    © {{ now().year }} YuciferPay — Managed payout and payroll operations.
+  </footer>
+</body>
+</html>

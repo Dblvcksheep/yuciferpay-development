@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Schedules{% endblock %}
+
+{% block content %}
+<style>
+  .status {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    border: 1px solid var(--border);
+  }
+  .Active { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+<!--  .error { background: rgba(255,0,0,0.15); color: #f87171; }-->
+  <!--  .processing { background: rgba(234,179,8,0.15); color: #fde68a; }-->
+<!--  .paid_pending { background: rgba(234,179,8,0.15); color: #fde68a; }-->
+  .Inactive { background: rgba(148,163,184,0.15); color: #cbd5f5; }
+
+  .section-title { font-size: 1.8rem; margin-bottom: 12px; }
+  .section-desc { color: var(--muted); margin-bottom: 32px; max-width: 720px; margin-left: auto; margin-right: auto; }
+
+      /* ========== Cards ========== */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+    border: 1px solid var(--border); border-radius: 22px; padding: 24px; backdrop-filter: blur(6px);
+  }
+  .card h3 { font-size: 1.1rem; margin-bottom: 6px; }
+  .card p { font-size: 0.9rem; color: var(--muted); margin: 4px 0; }
+
+  /* ========== Pagination ========== */
+  .pagination { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 40px; }
+  .pagination span { color: var(--muted); }
+  .pagination a { text-decoration: none; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--accent-soft); color: var(--accent); }
+
+</style>
+
+<section>
+  <h2 class="section-title">Payment Schedules</h2>
+  <p class="section-desc">All your available schedule.</p>
+
+  <form method="GET" action="{{ url_for('all_schedule') }}" style="margin-bottom: 24px; text-align:center;">
+    <input
+        type="text"
+        name="search"
+        placeholder="Search by name, account number or bank..."
+        value="{{ request.args.get('search', '') }}"
+        style="padding:8px 14px; border-radius:999px; border:1px solid var(--border); width:260px;"
+    >
+    <button
+        type="submit"
+        style="padding:8px 18px; border-radius:999px; border:1px solid var(--border); background:var(--accent-soft); color:var(--accent); cursor:pointer;"
+    >
+        Search
+    </button>
+  </form>
+
+  {% if schedule %}
+  <div class="grid">
+    {% for order in schedule.items %}
+    <div class="card">
+      <h3>{{ order.date }}</h3>
+      <p>Name: <strong>{{ order.acct_name }}</strong></p>
+      <p>Amount: <strong>{{ order.amount }}</strong></p>
+      <p><strong>{{ order.acct_num }} - {{ order.bank_name }}</strong></p>
+      <span class="status
+        {% if order.is_active %} Active
+        {% else %} Inactive {% endif %}
+      ">{% if order.is_active %}Active{% else %}Inactive{% endif %}</span>
+      <a href="{{ url_for('edit_schedule', schedule_id=order.id) }}" class="badge">Edit</a>
+      <a href="{{ url_for('delete_schedule', schedule_id=order.id) }}" class="badge">Delete</a>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="pagination">
+    {% if schedule.has_prev %}
+      <a href="{{ url_for('all_schedule', page=schedule.prev_num, search=request.args.get('search')) }}">Previous</a>
+    {% endif %}
+
+    <span>Page {{ schedule.page }} of {{ schedule.pages }}</span>
+
+    {% if schedule.has_next %}
+      <a href="{{ url_for('all_schedule', page=schedule.next_num, search=request.args.get('search')) }}">Next</a>
+    {% endif %}
+  </div>
+  {% else %}
+    <p class="section-desc center">No available Payroll/Payout schedule.</p>
+  {% endif %}
+</section>
+
+{% endblock %}

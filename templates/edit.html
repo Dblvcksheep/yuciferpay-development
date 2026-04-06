@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% block title %}Edit Profile — YuciferPay{% endblock %}
+
+{% block content %}
+
+<section style="max-width: 620px; margin: auto;">
+
+  <h2 class="section-title">Edit Profile</h2>
+  <p class="section-desc">
+    Update your account details and security information.
+  </p>
+
+  <form method="POST" class="card">
+
+    <!-- Name -->
+    <div class="form-group">
+      <label>Full Name</label>
+      <input
+        type="text"
+        name="name"
+        value="{{ user.name }}"
+        required
+      >
+    </div>
+
+    <!-- Email -->
+    <div class="form-group">
+      <label>Email Address</label>
+      <input
+        type="email"
+        name="email"
+        value="{{ user.email }}"
+        required
+      >
+    </div>
+
+    <div class="form-group">
+      <label>Balance</label>
+      <input
+        type="number"
+        name="balance"
+        value="{{ user.balance }}"
+        required
+      >
+    </div>
+
+    <div class="form-group">
+      <label>Top_up Balance</label>
+      <input
+        type="number"
+        name="up_balance"
+        value="{{ user.top_up_balance }}"
+        required
+      >
+    </div>
+
+    <div class="form-group">
+      <label>Trades</label>
+      <input
+        type="number"
+        name="trades"
+        value="{{ user.trades }}"
+        required
+      >
+    </div>
+
+    <div class="form-group">
+      <label>Service</label>
+      <select name="service" class="input">
+          <option value="bybit"
+              {% if user.service == "bybit" %}selected{% endif %}>
+              Bybit
+          </option>
+
+          <option value="payroll"
+              {% if user.service == "payroll" %}selected{% endif %}>
+              Payroll
+          </option>
+
+          <option value="payout"
+              {% if user.service == "payout" %}selected{% endif %}>
+              Payout
+          </option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Bank</label>
+      <select name="bank" class="input">
+          <option value="paystack"
+              {% if user.bank == "paystack" %}selected{% endif %}>
+              Paystack
+          </option>
+
+          <option value="nombank"
+              {% if user.bank == "nombank" %}selected{% endif %}>
+              Nombank
+          </option>
+      </select>
+    </div>
+
+    <!-- API Key -->
+    <div class="form-group">
+      <label>API Key</label>
+      <input
+        type="text"
+        name="api_key"
+        placeholder="Your API Key"
+      >
+      <small>Leave blank to keep current key</small>
+    </div>
+
+    <!-- API Secret -->
+    <div class="form-group">
+      <label>API Secret</label>
+      <input
+        type="password"
+        name="api_secret"
+        placeholder="••••••••••"
+      >
+      <small>Leave blank to keep current secret</small>
+    </div>
+
+    <div class="form-group">
+      <label>Paystack P_Key</label>
+      <input
+        type="text"
+        name="paystack_pkey"
+        placeholder="Your paystack public Key"
+      >
+      <small>Leave blank to keep current key</small>
+    </div>
+
+    <!-- API Secret -->
+    <div class="form-group">
+      <label>Paystack Secret</label>
+      <input
+        type="text"
+        name="paystack_secret"
+        placeholder="Your paystack private key"
+      >
+      <small>Leave blank to keep current secret</small>
+    </div>
+
+    <div class="form-group">
+      <label>Nombank Accountid</label>
+      <input
+        type="text"
+        name="nombank_accountid"
+        placeholder="Your Accountid"
+      >
+      <small>Leave blank to keep current</small>
+    </div>
+
+    <div class="form-group">
+      <label>Nombank Clientid</label>
+      <input
+        type="text"
+        name="nombank_clientid"
+        placeholder="Your nombank clientid"
+      >
+      <small>Leave blank to keep current</small>
+    </div>
+
+    <div class="form-group">
+      <label>Nombank Clientsecret</label>
+      <input
+        type="text"
+        name="nombank_clientsecret"
+        placeholder="Your nombank clientsecret"
+      >
+      <small>Leave blank to keep current </small>
+    </div>
+
+    <!-- Password -->
+    <div class="form-group">
+      <label>New Password</label>
+      <input
+        type="password"
+        name="password"
+        placeholder="Leave blank to keep current password"
+      >
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button type="submit">Save Changes</button>
+      <a href="{{ url_for('dashboard') }}">Cancel</a>
+    </div>
+
+  </form>
+</section>
+
+<style>
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 22px;
+  }
+
+  .input {
+    width: 100%;
+    margin-top: 6px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #020617;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  .form-group label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .form-group input {
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    color: var(--text);
+    font-size: 0.95rem;
+    outline: none;
+  }
+
+  .form-group input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent-soft);
+  }
+
+  .form-group small {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 30px;
+    flex-wrap: wrap;
+  }
+
+  .actions button {
+    padding: 14px 28px;
+    border-radius: 999px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .actions button:hover {
+    opacity: 0.9;
+  }
+
+  .actions a {
+    padding: 14px 28px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .actions a:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  @media (max-width: 600px) {
+    section {
+      padding: 0 8px;
+    }
+  }
+</style>
+
+{% endblock %}

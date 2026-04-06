@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<style>
+  .status {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    border: 1px solid var(--border);
+  }
+  .success { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .error { background: rgba(255,0,0,0.15); color: #f87171; }
+  <!--  .processing { background: rgba(234,179,8,0.15); color: #fde68a; }-->
+<!--  .paid_pending { background: rgba(234,179,8,0.15); color: #fde68a; }-->
+<!--  .pending { background: rgba(148,163,184,0.15); color: #cbd5f5; }-->
+
+  .section-title { font-size: 1.8rem; margin-bottom: 12px; }
+  .section-desc { color: var(--muted); margin-bottom: 32px; max-width: 720px; margin-left: auto; margin-right: auto; }
+
+      /* ========== Cards ========== */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+    border: 1px solid var(--border); border-radius: 22px; padding: 24px; backdrop-filter: blur(6px);
+  }
+  .card h3 { font-size: 1.1rem; margin-bottom: 6px; }
+  .card p { font-size: 0.9rem; color: var(--muted); margin: 4px 0; }
+
+  /* ========== Pagination ========== */
+  .pagination { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 40px; }
+  .pagination span { color: var(--muted); }
+  .pagination a { text-decoration: none; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--accent-soft); color: var(--accent); }
+
+</style>
+
+<section>
+  <h2 class="section-title">Notifications</h2>
+  <p class="section-desc">All your available notifications.</p>
+
+  {% if notifys %}
+  <div class="grid">
+    {% for order in notifys.items %}
+    <div class="card">
+      <h3>{{ order.level }}</h3>
+      <p>Error message: <strong>{{ order.message }}</strong></p>
+      <span class="status
+        {% if order.level == 'error' %} error
+        {% elif order.level == 'success' %} success
+        {% else %} pending {% endif %}
+      ">{{ order.level | capitalize }}</span>
+      <a href="{{ url_for('mark_seen', notify_id=order.id) }}" class="badge">Mark seen</a>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="pagination">
+    {% if notifys.has_prev %}
+      <a href="{{ url_for('notify', page=notifys.prev_num) }}">Previous</a>
+    {% endif %}
+    <span>Page {{ notifys.page }} of {{ notifys.pages }}</span>
+    {% if notifys.has_next %}
+      <a href="{{ url_for('notify', page=notifys.next_num) }}">Next</a>
+    {% endif %}
+  </div>
+  {% else %}
+    <p class="section-desc center">No available Notifications.</p>
+  {% endif %}
+</section>
+
+{% endblock %}

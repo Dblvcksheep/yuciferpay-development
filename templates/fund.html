@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<script src="https://js.paystack.co/v2/inline.js"></script>
+<section style="max-width:520px;margin:auto;">
+  <h2 class="section-title">Deposit Now</h2>
+  <p class="section-desc">
+    Top up your account here.
+  </p>
+  <input type="number" value="1000" id="amount" class="input" placeholder="Enter amount (₦)" min="100">
+
+  <button class="btn" onclick="deposit()">Deposit Now</button>
+</section>
+
+<script>
+function deposit() {
+  const amount = document.getElementById("amount").value;
+
+  if (!amount || amount <= 0) {
+    alert("Enter a valid amount");
+    return;
+  }
+
+  PaystackPop.setup({
+    key: "{{ PAYSTACK_PUBLIC_KEY }}",
+    email: "{{ current_user.email }}",
+    amount: amount * 100, // Paystack uses kobo
+    currency: "NGN",
+    metadata: {
+      user_id: "{{ current_user.id }}"
+    },
+    callback: function () {
+      alert("Payment initiated. Waiting for confirmation...");
+    }
+  }).openIframe();
+}
+</script>
+<style>
+  .input {
+    width: 100%;
+    margin-top: 6px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #020617;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+  }
+</style>{% endblock %}

@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — YuciferPay{% endblock %}
+
+{% block content %}
+
+<style>
+  /* ========== Utilities ========== */
+  .center { text-align: center; }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 24px; }
+  .status {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    border: 1px solid var(--border);
+  }
+  .paid { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .processing { background: rgba(234,179,8,0.15); color: #fde68a; }
+  .paid_pending { background: rgba(234,179,8,0.15); color: #fde68a; }
+  .pending { background: rgba(148,163,184,0.15); color: #cbd5f5; }
+  .failed { background: rgba(255,0,0,0.15); color: #f87171; }
+
+  .section-title { font-size: 1.8rem; margin-bottom: 12px; }
+  .section-desc { color: var(--muted); margin-bottom: 32px; max-width: 720px; margin-left: auto; margin-right: auto; }
+
+  /* ========== Balance Box ========== */
+  .balance-box { max-width: 460px; margin: 40px auto; text-align: center; }
+  .balance-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .balance-row h1 { font-size: 2.4rem; margin: 0; }
+  .plus-btn {
+    width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--accent-soft); color: var(--accent); font-size: 1.6rem; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .plus-btn:hover { background: var(--accent); color: #fff; transform: translateY(-2px); }
+
+  /* ========== Cards ========== */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+    border: 1px solid var(--border); border-radius: 22px; padding: 24px; backdrop-filter: blur(6px);
+  }
+  .card h3 { font-size: 1.1rem; margin-bottom: 6px; }
+  .card p { font-size: 0.9rem; color: var(--muted); margin: 4px 0; }
+
+  /* ========== Pagination ========== */
+  .pagination { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 40px; }
+  .pagination span { color: var(--muted); }
+  .pagination a { text-decoration: none; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--accent-soft); color: var(--accent); }
+
+  /* ========== Responsive ========== */
+  @media (max-width: 600px) {
+    .section-title { font-size: 1.5rem; }
+    .balance-row h1 { font-size: 2rem; }
+  }
+  .form-select {
+    width: 150px;
+    margin-top: 3px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #020617;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+</style>
+
+{% if current_user.id == 1 %}
+<!-- ================= ADMIN VIEW ================= -->
+<section>
+  <h2 class="section-title center">Registered Users</h2>
+  <a href="{{ url_for('register') }}" class="badge">+ Create New User</a>
+  <p class="section-desc center">Overview of all client accounts using YuciferPay.</p>
+
+  {% if users %}
+  <div class="grid">
+    {% for user in users.items %}
+    <div class="card">
+      <h3>{{ user.name }}</h3>
+      <p>{{ user.email }}</p>
+      <p>Balance: <strong>₦{{ user.balance | default("0.00") }}</strong></p>
+      <p>Top_up balance: <strong>₦{{ user.top_up_balance | default("0.00") }}</strong></p>
+      <p>Trades: <strong>{{ user.trades | default(0) }}</strong></p>
+
+      <div class="actions">
+        <a href="{{ url_for('view_account', user_id=user.id) }}" class="badge">View</a>
+        <a href="{{ url_for('delete', user_id=user.id) }}" class="badge">Delete</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="pagination">
+    {% if users.has_prev %}
+      <a href="{{ url_for('dashboard', page=users.prev_num) }}">Previous</a>
+    {% endif %}
+    <span>Page {{ users.page }} of {{ users.pages }}</span>
+    {% if users.has_next %}
+      <a href="{{ url_for('dashboard', page=users.next_num) }}">Next</a>
+    {% endif %}
+  </div>
+  {% else %}
+    <p class="section-desc center">No available users yet.</p>
+  {% endif %}
+</section>
+
+{% else %}
+<!-- ================= USER VIEW ================= -->
+<section class="center">
+  <h2 class="section-title">Available Balance</h2>
+
+  <form method="POST" action="{{ url_for('update_bank') }}">
+    <select name="bank" id="bankSelect" class="form-select">
+        <option value="paystack">Paystack</option>
+        <option value="nombank">Nombank</option>
+    </select>
+  </form>
+
+  <div class="highlight balance-box">
+    <div class="balance-row">
+      <h1>₦{{ dbalance | default("0.00") }}</h1>
+      <a href="{{ url_for('fund') }}" class="plus-btn" title="Add to Topup balance">+</a>
+      <a href="{{ url_for('withdraw') }}" class="plus-btn" title="withdraw funds">-</a>
+    </div>
+    <p class="section-desc" style="margin-bottom:0;">Top_up balance: <strong>₦{{ current_user.top_up_balance | default("0.00") }}</strong></p>
+    <div class="balance-row">
+      {% if current_user.service in ['payroll', 'payout'] %}
+        <a href="{{ url_for('all_schedule') }}" class="plus-btn" title="view payout/payroll">∞</a>
+        <a href="{{ url_for('schedule') }}" class="plus-btn" title="schedule payout/payroll">⏰</a>
+      {% endif %}
+    </div>
+    <p class="section-desc" style="margin-bottom:0;">Funds ready for payout</p>
+  </div>
+</section>
+
+<section class="center">
+  <div class="actions">
+    <a href="{{ url_for('check_orders') }}" class="badge">Check Orders</a>
+    <a href="{{ url_for('pay_all') }}" class="badge">Pay All</a>
+  </div>
+</section>
+
+<section>
+  <h2 class="section-title">Payout Orders</h2>
+  <p class="section-desc">All payout requests processed on your account.</p>
+
+  {% if orders %}
+  <div class="grid">
+    {% for order in orders.items %}
+    <div class="card">
+      <h3>{{ order.account_name }}</h3>
+      <p>Amount: <strong>₦{{ order.amount }}</strong></p>
+      <span class="status
+        {% if order.status == 'paid' %} paid
+        {% elif order.status == 'paid_pending' %} paid_pending
+        {% elif order.status == 'processing' %} processing
+        {% elif order.status == 'failed' %} failed
+        {% else %} pending {% endif %}
+      ">{{ order.status | capitalize }}</span>
+      <a href="{{ url_for('mark_paid', orderid=order.order_id) }}" class="badge">Mark paid</a>
+      <span class="badge">{{ min }}:{{ sec }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="pagination">
+    {% if orders.has_prev %}
+      <a href="{{ url_for('dashboard', page=orders.prev_num) }}">Previous</a>
+    {% endif %}
+    <span>Page {{ orders.page }} of {{ orders.pages }}</span>
+    {% if orders.has_next %}
+      <a href="{{ url_for('dashboard', page=orders.next_num) }}">Next</a>
+    {% endif %}
+  </div>
+  {% else %}
+    <p class="section-desc center">No payout orders available.</p>
+  {% endif %}
+</section>
+
+<script>
+    const select = document.getElementById("bankSelect");
+    const current = "{{ current_user.bank }}";
+
+    select.value = current;
+
+    select.addEventListener("change", function () {
+        if (this.value !== current) {
+            this.form.submit();
+        }
+    });
+</script>
+{% endif %}
+
+{% endblock %}

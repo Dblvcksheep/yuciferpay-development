@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Register — YuciferPay{% endblock %}
+
+{% block content %}
+<section style="max-width:520px;margin:auto;">
+  <h2 class="section-title">Create Account</h2>
+  <p class="section-desc">
+    Register your business to start using YuciferPay’s managed payout services.
+  </p>
+
+  <form method="POST">
+    <div class="grid" style="grid-template-columns:1fr;">
+      <div class="card">
+
+        <label>Business / Full Name</label>
+        <input type="text" name="name" required class="input">
+
+        <label>Email Address</label>
+        <input type="email" name="email" required class="input">
+
+        <label>Service</label>
+        <select name="service" class="input" required>
+            <option value="bybit">Bybit</option>
+            <option value="payroll">Payroll</option>
+            <option value="payout">Payout</option>
+        </select>
+
+        <label>Select Bank</label>
+        <select name="bank" id="bank" class="input" required>
+            <option value="paystack">Paystack</option>
+            <option value="nombank">Nombank</option>
+        </select>
+
+        <label>Password</label>
+        <input type="password" name="password" required class="input">
+
+        <label>Confirm Password</label>
+        <input type="password" name="confirm_password" required class="input">
+
+        <hr style="border-color:var(--border);margin:20px 0;">
+
+        <label>API Key</label>
+        <input type="text" name="api_key" class="input"
+               placeholder="Provided by your banking or payout partner">
+
+        <label>API Secret</label>
+        <input type="password" name="api_secret" class="input"
+               placeholder="Keep this secure">
+
+        <label>Paystack P_Key</label>
+        <input type="text" name="paystack_pkey" class="input"
+               placeholder="Provided by your banking">
+
+        <label>Paystack Secret_Key</label>
+        <input type="text" name="paystack_secret" class="input"
+               placeholder="Keep this secure">
+
+        <label>Nombank Accountid</label>
+        <input type="text" name="nombank_accountid" class="input"
+               placeholder="Provided by your banking">
+
+        <label>Nombank Clientid</label>
+        <input type="text" name="nombank_clientid" class="input"
+               placeholder="Provided by your banking">
+
+        <label>Nombank Clientsecret</label>
+        <input type="text" name="nombank_clientsecret" class="input"
+               placeholder="Provided by your banking">
+
+        <button type="submit" class="btn">Register</button>
+      </div>
+    </div>
+  </form>
+</section>
+
+<style>
+  .input {
+    width: 100%;
+    margin-top: 6px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #020617;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+  }
+</style>
+{% endblock %}

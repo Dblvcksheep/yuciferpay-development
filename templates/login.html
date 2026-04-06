@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Login — YuciferPay{% endblock %}
+
+{% block content %}
+<section style="max-width:420px;margin:auto;">
+  <h2 class="section-title">Login</h2>
+  <p class="section-desc">
+    Access your YuciferPay account to manage payouts and payroll operations.
+  </p>
+
+  <form method="POST">
+    <div class="grid" style="grid-template-columns:1fr;">
+      <div class="card">
+        <label>Email</label>
+        <input type="email" name="email" required class="input">
+
+        <label style="margin-top:16px;">Password</label>
+        <input type="password" name="password" required class="input">
+
+        <button type="submit" class="btn">Login</button>
+      </div>
+    </div>
+  </form>
+</section>
+
+<style>
+  .input {
+    width: 100%;
+    margin-top: 6px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #020617;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+  }
+</style>
+{% endblock %}
