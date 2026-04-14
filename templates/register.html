@@ -39,16 +39,18 @@
         <input type="password" name="confirm_password" required class="input">
 
         <hr style="border-color:var(--border);margin:20px 0;">
+        <p>Leave Anything below blank if you don't have the information for them, <a href="{{ url_for('reg_info') }}">Click Here</a> for informations to help you get registered</p>
+        <hr style="border-color:var(--border);margin:20px 0;">
 
-        <label>API Key</label>
+        <label>Bybit API Key</label>
         <input type="text" name="api_key" class="input"
                placeholder="Provided by your banking or payout partner">
 
-        <label>API Secret</label>
+        <label>Bybit API Secret</label>
         <input type="password" name="api_secret" class="input"
                placeholder="Keep this secure">
 
-        <label>Paystack P_Key</label>
+        <label>Paystack Public_Key</label>
         <input type="text" name="paystack_pkey" class="input"
                placeholder="Provided by your banking">
 

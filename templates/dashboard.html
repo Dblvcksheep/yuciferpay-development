@@ -133,6 +133,11 @@
         <a href="{{ url_for('all_schedule') }}" class="plus-btn" title="view payout/payroll">∞</a>
         <a href="{{ url_for('schedule') }}" class="plus-btn" title="schedule payout/payroll">⏰</a>
       {% endif %}
+      {% if current_user.automate %}
+        <a href="{{ url_for('automated') }}" class="plus-btn" title="Automation in progress">⏳</a>
+      {% else %}
+        <a href="{{ url_for('automated') }}" class="plus-btn" title="enable automation">🤖</a>
+      {% endif %}
     </div>
     <p class="section-desc" style="margin-bottom:0;">Funds ready for payout</p>
   </div>

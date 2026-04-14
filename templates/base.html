@@ -214,7 +214,7 @@
         <a href="{{ url_for('dashboard') }}" class="badge">Dashboard</a>
         <a href="{{ url_for('logout') }}" class="badge">Logout</a>
       {% else %}
-        <a href="https://wa.link/01orrx" class="badge">Get Registered</a>
+        <a href="{{ url_for('register') }}" class="badge">Get Registered</a>
         <a href="{{ url_for('login') }}" class="badge">Login</a>
       {% endif %}
       </div>

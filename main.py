@@ -1,3 +1,5 @@
+import time
+
 from gevent import monkey
 
 monkey.patch_all()
@@ -27,6 +29,7 @@ from dotenv import load_dotenv
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.exceptions import TooManyRequests
+import threading
 
 
 load_dotenv()
@@ -124,7 +127,7 @@ class User(db.Model, UserMixin):
     nombank_clientsecret = db.Column(db.Text, nullable=True)
     balance = db.Column(db.Float, nullable=False, default=0.0)
     top_up_balance = db.Column(db.Float, nullable=False, default=0.0)
-    automate = db.Column(db.Boolean, nullable=False, default=False)
+    automate = db.Column(db.Boolean, nullable=False, default=True)
     deposits = db.relationship(
         'Deposit',
         backref='user',
@@ -195,6 +198,7 @@ class Order(db.Model):
     processed_with = db.Column(db.String, nullable=True)
     reference_id = db.Column(db.String, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    is_queued = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.now())
     updated_at = db.Column(db.DateTime, default=datetime.now(), onupdate=datetime.now())
     expire_at = db.Column(db.DateTime)
@@ -760,6 +764,108 @@ def reciept_img(order_id, apikey,apisecret):
     return response.json()
 
 
+def check(user):
+    if user.service == 'bybit':
+        orders = get_orders(decrypt(user.api_key),decrypt(user.api_secret))
+
+        if orders.get('ret_msg') != 'SUCCESS':
+            db.session.add(Notify(
+                user_id=user.id,
+                message='There was an error connecting to the API',
+                level='error',
+                seen=False,
+                expire_at=datetime.now() + timedelta(hours=1)
+            ))
+            db.session.commit()
+            return None
+
+        items = orders.get('result', {}).get('items', [])
+
+        if not items:
+            return None
+
+        for order in items:
+            order_id = order.get('id')
+            amount = order.get('amount')
+
+            # 🔒 Skip if order already exists
+            existing = Order.query.filter_by(order_id=order_id).first()
+            if existing:
+                continue
+
+            detail = order_details(order_id,decrypt(user.api_key),decrypt(user.api_secret))
+            if detail.get('ret_msg') != 'SUCCESS':
+                continue
+
+            payment_list = detail.get('result', {}).get('paymentTermList', [])
+            if not payment_list:
+                continue  # no payment info
+
+            payment = payment_list[0]  # get the first payment term
+
+            bank_name = payment.get('bankName')
+            account_number = payment.get('accountNo')
+            account_name = payment.get('realName')
+            payment_type = payment.get('paymentType')
+            payment_id = payment.get('id')
+
+            # 🚫 Validate required fields
+            if not bank_name or not account_number:
+                status = 'failed'
+            else:
+                status = 'processing'
+
+            new_order = Order(
+                order_id=order_id,
+                amount=amount,
+                bank_name=bank_name,
+                account_name=account_name,
+                account_number=account_number,
+                payment_type=payment_type,
+                payment_id=payment_id,
+                Bank_code=match_bank(bank_name),
+                nombank_code =match_nombank(bank_name),
+                reference_id=f"YPF-PROD{user.id}-{order_id}",
+                user_id=user.id,
+                status=status,
+                expire_at=datetime.now() + timedelta(days=2),
+            )
+
+            db.session.add(new_order)
+
+            db.session.commit()
+    elif user.service in ['payroll', 'payout']:
+        now = datetime.now()
+
+        schedules = Schedule.query.filter(
+            Schedule.user_id == user.id,
+            Schedule.date <= now,
+            Schedule.is_active == False
+        ).all()
+
+        for m in schedules:
+            new_order = Order(
+                order_id=m.id,
+                amount=m.amount,
+                bank_name=m.bank_name,
+                account_name=m.acct_name,
+                account_number=m.acct_num,
+                Bank_code=match_bank(m.bank_name),
+                nombank_code=match_nombank(m.bank_name),
+                reference_id=f"YPF-PROD{user.id}-{uuid.uuid4().hex[:12]}",
+                user_id=user.id,
+                status='processing',
+                expire_at=datetime.now() + timedelta(days=2),
+            )
+
+            m.is_active = True
+
+            db.session.add(new_order)
+
+            db.session.commit()
+    return None
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -788,11 +894,7 @@ def login():
 
 
 @app.route('/register__', methods=["GET", "POST"])
-@admin_only
-@login_required
 def register():
-    if current_user.id != 1:
-        return redirect('dashboard')
     if request.method == 'POST':
         name = request.form.get('name')
         email = request.form.get('email').lower()
@@ -808,9 +910,13 @@ def register():
         password = request.form.get('password')
         confirm_pass = request.form.get('confirm_password')
         if password == confirm_pass:
-            reg = User(name=name, api_key=encrypt(api_key),api_secret=encrypt(api_secret), email=email,
+            reg = User(name=name,
+                       api_key=encrypt(api_key) if api_key else None,
+                       api_secret=encrypt(api_secret) if api_secret else None,
+                       email=email,
                        password=generate_password_hash(password, salt_length=5),
-                       service=service,bank=bank,
+                       service=service,
+                       bank=bank,
                        paystack_secret=encrypt(paystack_secret) if paystack_secret else None,
                        paystack_public=encrypt(paystack_public) if paystack_public else None,
                        nombank_accountid=encrypt(nombank_accountid) if nombank_accountid else None,
@@ -1024,24 +1130,32 @@ def nombank_webhook():
             pay.is_active = False
             user.trades += 1
             order.status = 'paid'
-            if 4500 <= amount <= 50000:
-                user.top_up_balance -= 5
-            elif 50000 < amount <= 500000:
-                user.top_up_balance -= 10
+            if amount <= 20000:
+                user.top_up_balance -= 100
+            elif 20000 < amount <= 50000:
+                user.top_up_balance -= 200
+            elif 50000 < amount <= 100000:
+                user.top_up_balance -= 300
+            elif 100000 < amount <= 500000:
+                user.top_up_balance -= 500
             else:
-                user.top_up_balance -= 20
+                user.top_up_balance -= 1000
             db.session.commit()
         elif user.service == 'payout':
             pay = Schedule.query.get_or_404(order.order_id)
             amount = float(order.amount)
             user.trades += 1
             order.status = 'paid'
-            if 4500 <= amount <= 50000:
-                user.top_up_balance -= 5
-            elif 50000 < amount <= 500000:
-                user.top_up_balance -= 10
+            if amount <= 20000:
+                user.top_up_balance -= 100
+            elif 20000 < amount <= 50000:
+                user.top_up_balance -= 200
+            elif 50000 < amount <= 100000:
+                user.top_up_balance -= 300
+            elif 100000 < amount <= 500000:
+                user.top_up_balance -= 500
             else:
-                user.top_up_balance -= 20
+                user.top_up_balance -= 1000
             db.session.delete(pay)
             db.session.commit()
 
@@ -1109,24 +1223,32 @@ def paystack_transfer_webhook():
             pay.is_active = False
             user.trades += 1
             order.status = 'paid'
-            if 4500 <= amount <= 50000:
-                user.top_up_balance -= 5
-            elif 50000 < amount <= 500000:
-                user.top_up_balance -= 10
+            if amount <= 20000:
+                user.top_up_balance -= 100
+            elif 20000 < amount <= 50000:
+                user.top_up_balance -= 200
+            elif 50000 < amount <= 100000:
+                user.top_up_balance -= 300
+            elif 100000 < amount <= 500000:
+                user.top_up_balance -= 500
             else:
-                user.top_up_balance -= 20
+                user.top_up_balance -= 1000
             db.session.commit()
         elif user.service == 'payout':
             pay = Schedule.query.get_or_404(order.order_id)
             amount = float(order.amount)
             user.trades += 1
             order.status = 'paid'
-            if 4500 <= amount <= 50000:
-                user.top_up_balance -= 5
-            elif 50000 < amount <= 500000:
-                user.top_up_balance -= 10
+            if amount <= 20000:
+                user.top_up_balance -= 100
+            elif 20000 < amount <= 50000:
+                user.top_up_balance -= 200
+            elif 50000 < amount <= 100000:
+                user.top_up_balance -= 300
+            elif 100000 < amount <= 500000:
+                user.top_up_balance -= 500
             else:
-                user.top_up_balance -= 20
+                user.top_up_balance -= 1000
             db.session.delete(pay)
             db.session.commit()
     else:
@@ -1328,7 +1450,8 @@ def pay_all():
     from tasks import process_pay_all
     orders = Order.query.filter(
         Order.user_id == current_user.id,
-        Order.status == 'processing'
+        Order.status == 'processing',
+        Order.is_queued == False
     ).all()
     if not orders:
         flash('No active orders to pay', 'error')
@@ -1340,6 +1463,9 @@ def pay_all():
 
     for order in orders:
         process_pay_all.delay(current_user.id, order.order_id)
+        order.is_queued = True
+
+    db.session.commit()
     flash("Bulk payment started. Refresh dashboard for updates.", "info")
     return redirect(url_for("dashboard"))
 
@@ -1365,7 +1491,7 @@ def mark_paid(orderid):
             amount = float(order.amount)
             current_user.trades+=1
             order.status = 'paid'
-            if 4500 <= amount <= 50000:
+            if amount <= 50000:
                 current_user.top_up_balance -= 5
             elif 50000 < amount <= 500000:
                 current_user.top_up_balance -= 10
@@ -1385,24 +1511,32 @@ def mark_paid(orderid):
             pay.is_active = False
             current_user.trades += 1
             order.status = 'paid'
-            if 4500 <= amount <= 50000:
-                current_user.top_up_balance -= 5
-            elif 50000 < amount <= 500000:
-                current_user.top_up_balance -= 10
+            if amount <= 20000:
+                current_user.top_up_balance -= 100
+            elif 20000 < amount <=50000:
+                current_user.top_up_balance -= 200
+            elif 50000 < amount <= 100000:
+                current_user.top_up_balance -= 300
+            elif 100000 < amount <= 500000:
+                current_user.top_up_balance -= 500
             else:
-                current_user.top_up_balance -= 20
+                current_user.top_up_balance -= 1000
             db.session.commit()
         elif current_user.service == 'payout':
             pay = Schedule.query.get_or_404(orderid)
             amount = float(order.amount)
             current_user.trades += 1
             order.status = 'paid'
-            if 4500 <= amount <= 50000:
-                current_user.top_up_balance -= 5
-            elif 50000 < amount <= 500000:
-                current_user.top_up_balance -= 10
+            if amount <= 20000:
+                current_user.top_up_balance -= 100
+            elif 20000 < amount <=50000:
+                current_user.top_up_balance -= 200
+            elif 50000 < amount <= 100000:
+                current_user.top_up_balance -= 300
+            elif 100000 < amount <= 500000:
+                current_user.top_up_balance -= 500
             else:
-                current_user.top_up_balance -= 20
+                current_user.top_up_balance -= 1000
             db.session.delete(pay)
             db.session.commit()
 
@@ -1694,6 +1828,23 @@ def delete_schedule(schedule_id):
             return redirect(url_for('delete_schedule', schedule_id=schedule_id))
     return render_template('delete_schedule.html')
 
+@app.route("/automate")
+@login_required
+def automated():
+    if current_user.automate:
+        current_user.automate = False
+    else:
+        current_user.automate = True
+    db.session.commit()
+
+    flash("Automation enabled" if current_user.automate else "Automation disabled")
+    return redirect(url_for('dashboard'))
+
+
+@app.route("/reg_info")
+def reg_info():
+    return render_template('reg_info.html')
+
 @app.errorhandler(TooManyRequests)
 def rate_limit_handler(e):
     flash("Too many login attempt.", "warning")
@@ -1712,6 +1863,61 @@ def unauthorized():
         abort(HTTPStatus.UNAUTHORIZED)
     return redirect(url_for('login'))
 
+def work(user):
+    print(f"working on user:{user.id}")
+    with app.app_context():
+        try:
+            check(user)
+        except Exception as e:
+            db.session.add(Notify(
+                user_id=user.id,
+                message=f'{str(e)}',
+                level='error',
+                seen=False,
+                expire_at=datetime.now() + timedelta(hours=1)
+            ))
+            db.session.commit()
+        from tasks import process_pay_all
+        orders = Order.query.filter(
+            Order.user_id == user.id,
+            Order.status == 'processing',
+            Order.is_queued == False
+        ).all()
+
+        if user.top_up_balance <= 100:
+            db.session.add(Notify(
+                user_id=user.id,
+                message=f'Your Top up balance must not go below 100',
+                level='error',
+                seen=False,
+                expire_at=datetime.now() + timedelta(hours=1)
+            ))
+            db.session.commit()
+        else:
+            for order in orders:
+                process_pay_all.delay(user.id, order.order_id)
+                order.is_queued = True
+
+            db.session.commit()
+
+def automating():
+    print("Thread started")
+    while True:
+        with app.app_context():
+            users = User.query.filter(User.automate == True).all()
+        threads = []
+        for user in users:
+            t = threading.Thread(target=work,args=(user,))
+            t.start()
+            threads.append(t)
+
+            if len(threads)==5:
+                for t in threads:
+                    t.join()
+                threads.clear()
+        time.sleep(5)
 
 if __name__ == "__main__":
+    t = threading.Thread(target=automating, daemon=True)
+    t.start()
     app.run(debug=False, port=5000)
