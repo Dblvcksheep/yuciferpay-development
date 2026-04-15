@@ -83,7 +83,7 @@ FLASK_APP=main.py
 *Step 3*: Start the server
 
 ```bash
-flask run
+python main.py
 ```
 
 **Future Roadmap**
