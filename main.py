@@ -765,6 +765,7 @@ def reciept_img(order_id, apikey,apisecret):
 
 
 def check(user):
+    print(f"running checks on {user}")
     if user.service == 'bybit':
         orders = get_orders(decrypt(user.api_key),decrypt(user.api_secret))
 
@@ -833,7 +834,7 @@ def check(user):
 
             db.session.add(new_order)
 
-            db.session.commit()
+        db.session.commit()
     elif user.service in ['payroll', 'payout']:
         now = datetime.now()
 
@@ -844,6 +845,10 @@ def check(user):
         ).all()
 
         for m in schedules:
+            existing = Order.query.filter_by(order_id=m.id).first()
+            if existing:
+                continue
+            print(f"running {m}")
             new_order = Order(
                 order_id=m.id,
                 amount=m.amount,
@@ -857,12 +862,10 @@ def check(user):
                 status='processing',
                 expire_at=datetime.now() + timedelta(days=2),
             )
-
+            db.session.add(new_order)
             m.is_active = True
 
-            db.session.add(new_order)
-
-            db.session.commit()
+        db.session.commit()
     return None
 
 
@@ -1021,7 +1024,6 @@ def mark_seen(notify_id):
 
 
 @app.route('/view_account/<int:user_id>', methods=["GET", "POST"])
-@admin_only
 @login_required
 def view_account(user_id):
     user = User.query.get_or_404(user_id)
@@ -1031,7 +1033,7 @@ def view_account(user_id):
         service = request.form.get('service').lower()
         bank = request.form.get('bank').lower()
         password = request.form.get('password')
-        balance = request.form.get('balance')
+        # balance = request.form.get('balance')
         top_up_balance = request.form.get('up_balance')
         trades = request.form.get('trades')
         apikey = request.form.get('api_key')
@@ -1043,9 +1045,10 @@ def view_account(user_id):
         nombank_clientsecret = request.form.get('nombank_clientsecret')
         user.name = name
         user.email = email
-        user.balance = float(balance)
-        user.top_up_balance = float(top_up_balance)
-        user.trades = trades
+        # user.balance = float(balance)
+        if current_user.id == 1:
+            user.top_up_balance = float(top_up_balance)
+            user.trades = trades
         user.service = service
         user.bank = bank
         if password:
@@ -1409,7 +1412,7 @@ def check_orders():
 
             db.session.add(new_order)
 
-            db.session.commit()
+        db.session.commit()
     elif current_user.service in ['payroll', 'payout']:
         now = datetime.now()
 
@@ -1420,6 +1423,9 @@ def check_orders():
         ).all()
 
         for m in schedules:
+            existing = Order.query.filter_by(order_id=m.id).first()
+            if existing:
+                continue
             new_order = Order(
                 order_id=m.id,
                 amount=m.amount,
@@ -1434,11 +1440,10 @@ def check_orders():
                 expire_at=datetime.now() + timedelta(days=2),
             )
 
+            db.session.add(new_order)
             m.is_active = True
 
-            db.session.add(new_order)
-
-            db.session.commit()
+        db.session.commit()
 
     flash('Orders synced successfully', 'success')
     return redirect(url_for('dashboard'))
